@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice & Gesture Control Camera</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+        :root {
+            --background-color: #f0f0f0;
+            --text-color: #2c3e50;
+            --sidebar-color: #2c3e50;
+            --button-bg-color: #3498db;
+            --button-text-color: white;
+        }
+
+        body.dark-mode {
+            --background-color: #1c1c1c;
+            --text-color: #f0f0f0;
+            --sidebar-color: #141414;
+            --button-bg-color: #2980b9;
+            --button-text-color: #f0f0f0;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            width: 100%;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+        }
+
+        .sidebar {
+            width: 25%;
+            background-color: var(--sidebar-color);
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .sidebar h2 {
+            margin-bottom: 20px;
+        }
+
+        .camera-area {
+            width: 75%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            position: relative;
+            margin-bottom: 50px;
+        }
+
+        #camera-icon {
+            color: var(--button-bg-color);
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.2s ease;
+        }
+
+        #camera-icon:hover {
+            transform: scale(1.1);
+        }
+
+        video, canvas {
+            border: 1px solid #ccc;
+            margin-bottom: 30px;
+        }
+
+        #gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+        }
+
+        .img-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        #gallery img {
+            width: 100%;
+            height: auto;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .delete-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 20px;
+            color: #e74c3c;
+            display: none;
+        }
+
+        .img-container:hover .delete-button {
+            display: block;
+        }
+
+        .delete-button:hover {
+            color: #c0392b;
+        }
+
+        .round-button {
+            position: absolute;
+            bottom: -30px;
+            width: 70px;
+            height: 70px;
+            background-color: var(--button-bg-color);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            color: var(--button-text-color);
+            transition: all 0.2s ease;
+        }
+
+        .round-button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .round-button:active {
+            transform: scale(0.95);
+        }
+
+        .round-button::before {
+            content: "\f030";
+            font-family: 'Font Awesome 5 Free';
+            font-weight: 900;
+            color: white;
+            font-size: 24px;
+        }
+
+        /* Image Popup Modal */
+        .image-popup {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .popup-image {
+            max-width: 80%;
+            max-height: 80%;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .close-button {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 40px;
+            color: white;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close-button:hover {
+            color: #ff6347;
+        }
+
+        /* Zoom animation for popup */
+        @keyframes zoomIn {
+            from {
+                transform: scale(0.5);
+            }
+            to {
+                transform: scale(1);
+            }
+        }
+
+        #help-icon {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: var(--button-bg-color);
+            cursor: pointer;
+            transition: color 0.3s ease;
+            z-index: 125;
+        }
+
+        #help-icon:hover {
+            color: #2980b9;
+        }
+
+        /* Help Popup Styles */
+        .help-popup {
+            position: absolute;
+            top: 40px;
+            right: 40px;
+            max-width: 320px;
+            padding: 20px;
+            background-color: white;
+            border: 2px solid #3498db;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            font-size: 15px;
+            display: none;
+            opacity: 0;
+            transform: translateX(20px) scale(0.95);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            z-index: 120;
+        }
+
+        /* Enhance Heading Style */
+        .help-popup h3 {
+            margin-top: 0;
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            text-align: center;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        /* Improve paragraph spacing and design */
+        .help-popup p {
+            font-size: 15px;
+            color: #34495e;
+            line-height: 1.6;
+            margin-bottom: 12px;
+            padding: 10px;
+            background-color: #ecf0f1;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        /* Show popup */
+        .help-popup.show {
+            display: block;
+            opacity: 1;
+            transform: translateX(0) scale(1);
+        }
+
+        /* Smooth open effect for hover */
+        #help-icon:hover + .help-popup {
+            animation: bounceIn 0.5s ease;
+        }
+
+        /* Keyframes for subtle bounce effect */
+        @keyframes bounceIn {
+            0% {
+                transform: translateY(-20px) scale(0.9);
+                opacity: 0;
+            }
+            80% {
+                transform: translateY(5px) scale(1.05);
+                opacity: 0.8;
+            }
+            100% {
+                transform: translateY(0px) scale(1);
+                opacity: 1;
+            }
+        }
+
+        /* Dark Mode Toggle Switch Style */
+        .theme-switch {
+            position: absolute;
+            top: 20px;
+            right: 60px;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+            z-index: 120;
+        }
+
+        .theme-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 34px;
+            z-index: 121;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            border-radius: 50%;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+        }
+
+        input:checked + .slider {
+            background-color: #3498db;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        @media screen and (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .sidebar {
+                width: 100%;
+                padding: 10px;
+            }
+
+            .sidebar h2 {
+                margin-bottom: 20px;
+                margin-left: 20px;
+            }
+
+            .camera-area {
+                width: 100%;
+                margin: 20px auto;
+            }
+
+            #video, #canvas {
+                width: 100%;
+                max-width: 100%;
+                height: auto;
+            }
+
+            #help-icon {
+                top: 40px;
+                right: 10px;
+                font-size: 1.5rem;
+            }
+
+            .help-popup {
+                max-width: 90%;
+                right: 20px;
+                top: 30px;
+            }
+
+            .round-button {
+                bottom: -20px;
+                width: 50px;
+                height: 50px;
+            }
+
+            #gallery {
+                grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            }
+
+            .theme-switch{
+                top: 35px;
+            }
+        }
+
+        @media screen and (max-width: 480px) {
+            .sidebar h2 {
+                margin-bottom: 20px;
+                margin-left: 20px;
+            }
+
+            .round-button {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+
+            #help-icon {
+                font-size: 1.2rem;
+            }
+
+            #gallery {
+                grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            }
+        }
+
+    </style>
+    <!-- <link rel="stylesheet" href="style.css"> -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+
+        <!-- Dark Mode Toggle Switch -->
+        <label class="theme-switch">
+            <input type="checkbox" id="dark-mode-toggle">
+            <span class="slider"></span>
+        </label>
+
+        <!-- Help Icon -->
+        <i id="help-icon" class="fas fa-question-circle fa-2x" title="Help" onclick="toggleHelpPopup()"></i>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h2>My Gallery</h2>
+            <div id="gallery"></div>
+        </div>
+
+        <!-- Camera Area -->
+        <div class="camera-area">
+            <i class="fas fa-camera fa-5x" id="camera-icon" onclick="toggleCamera()"></i>
+            <video id="video" width="640" height="480" autoplay style="display: none;"></video>
+            <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+            
+            <!-- Rounded button like iPhone's AssistiveTouch -->
+            <button id="capture-button" class="round-button" onclick="startCountdownAndCapture()" style="display: none;"></button>
+        </div>
+
+        <!-- Popup Modal for the Image -->
+        <div id="image-popup" class="image-popup">
+            <span class="close-button" onclick="closePopup()">&times;</span>
+            <img id="popup-image" class="popup-image" src="" alt="Opened Image">
+        </div>
+
+        <!-- Help Popup for commands -->
+        <div id="help-popup" class="help-popup">
+            <h3>Commands Guide</h3>
+            <p><b>Open camera</b> – Opens the webcam and shows the live video feed.</p>
+            <p><b>Close camera</b> – Closes the webcam and hides the video feed.</p>
+            <p><b>Capture</b> – Takes a picture after a short countdown and saves it to the gallery.</p>
+            <p><b>Open image [number]</b> – Opens the specified image from the gallery (e.g., "open image 1").</p>
+            <p><b>Close image</b> – Closes the currently opened image popup.</p>
+        </div>
+
+    </div>
+
+    <!-- Adding GSAP animation library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
